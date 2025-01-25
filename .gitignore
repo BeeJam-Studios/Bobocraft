@@ -1,0 +1,4 @@
+Cargo.lock
+*.json
+*.bobo
+*.pkg.*
