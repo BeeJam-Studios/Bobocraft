@@ -1,0 +1,29 @@
+[package]
+name = "bobocraft"
+edition = "2021"
+version = "0.1.0"
+
+[dependencies]
+bevy_simple_text_input = "0.10"
+serde = "1"
+serde_json = "1"
+anyhow = "1"
+bevy_mod_raycast = { path = "../bevy/raycast", default-features = false }
+bevy-scene-hook = { path = "../bevy/scene-hook" }
+bobocraft-format = { path = "../format" }
+bobocraft-cubes = { path = "../cubes" }
+bobocraft-graph = { path = "../graph" }
+bevy_editor_pls = { version = "0.10", optional = true }
+crossbeam-channel = "0.5"
+directories = "6"
+
+[dependencies.bevy]
+version = "0.15"
+features = ["wayland", "serialize"]
+
+[target.'cfg(windows)'.dependencies.nu-ansi-term]
+version = "0.50"
+
+[features]
+editor = ["dep:bevy_editor_pls"]
+sped = ["bevy/dynamic_linking"]
