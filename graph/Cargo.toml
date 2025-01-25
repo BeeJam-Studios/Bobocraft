@@ -1,0 +1,15 @@
+[package]
+name = "bobocraft-graph"
+version = "0.2.0"
+edition = "2021"
+
+[dependencies]
+glam = "0.29"
+thiserror = "2"
+vec-btree-map = "0.7"
+
+[dependencies.bobocraft-format]
+path = "../format"
+
+[dependencies.bobocraft-cubes]
+path = "../cubes"
