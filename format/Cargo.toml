@@ -1,0 +1,22 @@
+[package]
+name = "bobocraft-format"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+anyhow = "1"
+serde = "1"
+serde_json = "1"
+
+[dependencies.chrono]
+version = "0.4"
+features = ["serde"]
+
+[dependencies.postcard]
+version = "1"
+default-features = false
+features = ["use-std"]
+
+[dependencies.bobocraft-cubes]
+path = "../cubes"
