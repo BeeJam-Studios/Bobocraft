@@ -322,7 +322,7 @@ impl Iterator for DamageTest<'_> {
                 let max_damage_per_shot = state.map(|s| s.eff_damage_per_shot).unwrap_or(0.0);
                 let new_max = if eff_damage_per_shot == max_damage_per_shot {
                     equal_maxima += 1;
-                    self.graph.rng.new() % equal_maxima == 0
+                    self.graph.rng.next() % equal_maxima == 0
                 } else {
                     eff_damage_per_shot > max_damage_per_shot
                 };
