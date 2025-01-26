@@ -10,7 +10,7 @@ impl Rng {
         }
     }
 
-    pub fn new(&mut self) -> u32 {
+    pub fn next(&mut self) -> u32 {
         let lcg_m: u32 = 2147483647; //meresenne prime for LCG with c=0
         let lcg_a: u32 = 48271;
         let lcg_q = lcg_m / lcg_a;
