@@ -3,3 +3,4 @@ Cargo.lock
 *.bobo
 *.pkg.*
 target
+*.DS_Store
