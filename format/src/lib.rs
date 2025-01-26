@@ -45,10 +45,10 @@ pub struct JsonPlacement {
     pub cube_name: String,
 }
 
-pub fn from_buf(ext: Option<&str>, buf: &Vec<u8>) -> Result<Vec<Placement>, anyhow::Error> {
+pub fn from_buf(ext: Option<&str>, buf: &[u8]) -> Result<Vec<Placement>, anyhow::Error> {
     Ok(match ext {
-        Some("json") => json::from_slice(&buf)?,
-        Some("bobo") => postcard::from_slice(&buf)?,
+        Some("json") => json::from_slice(buf)?,
+        Some("bobo") => postcard::from_slice(buf)?,
         Some(ext) => anyhow::bail!("unknown file extension {}", ext),
         None => anyhow::bail!("file extension is missing, unable to determine bobo format"),
     })
