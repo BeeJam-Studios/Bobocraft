@@ -104,16 +104,13 @@ impl GraphBuilder {
         let mut connections = self.connections.build();
 
         for (&position, connected) in connections.iter() {
-            match connected.as_slice() {
-                [left, right] => {
-                    if [Category::Armor, Category::Cosmetic]
-                        .contains(&self.cubes.get(&position).unwrap().category())
-                    {
-                        reduced.insert(position, (*left, *right));
-                    }
-                }
-                _ => (),
+            let ([left, right], Category::Armor | Category::Cosmetic) = (
+                connected.as_slice(),
+                self.cubes.get(&position).unwrap().category(),
+            ) else {
+                continue;
             };
+            reduced.insert(position, (*left, *right));
         }
 
         let search = |mut position: CubePosition, direction: bool| -> (CubePosition, usize) {
@@ -128,12 +125,10 @@ impl GraphBuilder {
                         } else {
                             left
                         }
+                    } else if Some(right) == last {
+                        left
                     } else {
-                        if Some(right) == last {
-                            left
-                        } else {
-                            right
-                        }
+                        right
                     };
                     last = Some(position);
                     position = n;
