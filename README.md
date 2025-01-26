@@ -10,4 +10,5 @@ This project is dual-licensed under the AGPL-3.0 License and a commercial licens
 - **Commercial License**: If you do not wish to comply with the AGPL-3.0’s copyleft requirements, you can obtain a commercial license. For more information, contact us on [discord](https://discord.gg/6Ft534jh5e).
 
 ## Linting
-Bobocraft uses [Clippy](https://doc.rust-lang.org/clippy/) for checking and linting Rust code. If you use VS Code or a derivative thereof, this should be enabled already (see `.vscode` in this repository) If not, check if your IDE supports changing the rust analyzer check command or simply run `cargo clippy` from a shell.
+
+Bobocraft uses [Clippy](https://doc.rust-lang.org/clippy/) for checking and linting Rust code. If you use VS Code or a derivative thereof, this should be enabled already (see `.vscode` in this repository) If not, check if your IDE supports changing the rust analyzer check command or simply run `cargo clippy` from a shell. If you installed Rust via `rustup` with its default configuration, Clippy should already be installed. If not, you can run `rustup component add clippy` from your shell to install it.
