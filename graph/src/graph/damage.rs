@@ -201,7 +201,7 @@ impl Graph {
     }
 
     #[inline]
-    pub fn next(&mut self) -> bool {
+    pub fn next_commit(&mut self) -> bool {
         let max_commit = self.cubes.seek(self.next_commit);
         if max_commit == self.next_commit {
             self.next_commit += 1;
@@ -286,7 +286,7 @@ pub struct DamageTest<'a> {
     remaining: f32,
 }
 
-impl<'a> Iterator for DamageTest<'a> {
+impl Iterator for DamageTest<'_> {
     type Item = f32;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -352,7 +352,7 @@ impl<'a> Iterator for DamageTest<'a> {
     }
 }
 
-impl<'a> DamageTest<'a> {
+impl DamageTest<'_> {
     pub fn get_shots(&self) -> u32 {
         self.shots
     }

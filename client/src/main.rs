@@ -519,7 +519,7 @@ fn undo_redo_damage(
             }
         }
         c if c == &config.redo => {
-            if graph.next() {
+            if graph.next_commit() {
                 dbg!(graph.damage_dealt());
                 commands.entity(bobo).insert(ModifiedBobo);
             }
