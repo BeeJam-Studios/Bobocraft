@@ -120,15 +120,18 @@ impl Graph {
                 .next_cubes
                 .iter()
                 .fold(0, |hp, cube_index| hp + self.cubes[*cube_index].health());
-            let percent_damage = ((damage as f32) / (layer_hp as f32)).min(1.0);
             for cube_index in self.next_cubes.drain(..) {
                 let cube = &mut self.cubes[cube_index];
                 if cube.is_destroyed() {
                     continue;
                 }
-                let cube_damage = ((cube.health() as f32) * percent_damage) as u32;
-                self.damage += cube_damage;
+                let cube_damage = if damage >= layer_hp {
+                    cube.health()
+                } else {
+                    ((cube.health() as u64 * damage as u64) / layer_hp as u64) as u32
+                };
                 cube.damage(cube_damage, self.next_commit, self.initial_hit);
+                self.damage += cube_damage;
                 self.initial_hit = false;
                 //add connecting cubes to next layer
                 if damage > layer_hp {
