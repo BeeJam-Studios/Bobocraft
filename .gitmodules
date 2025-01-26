@@ -1,6 +1,0 @@
-[submodule "bevy/scene-hook"]
-	path = bevy/scene-hook
-	url = https://github.com/AlephCubed/bevy-scene-hook
-[submodule "bevy/raycast"]
-	path = bevy/raycast
-	url = https://github.com/NthTensor/bevy_mod_raycast.git
