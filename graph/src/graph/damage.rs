@@ -114,83 +114,33 @@ impl Graph {
     }
 
     fn apply_damage(&mut self, mut damage: u32) {
-        self.damage += damage;
+        assert!(self.next_connections.is_empty());
         loop {
-            loop {
-                let cube_index = match self.next_cubes.len() {
-                    0 => break,
-                    1 => 0,
-                    2 if self.initial_hit => 0,
-                    _ => (self.rng.new() % (self.next_cubes.len() as u32)) as usize,
-                };
-                let cube_index = self.next_cubes.swap_remove(cube_index);
-                let connections = &self.connections[cube_index];
+            let layer_hp = self
+                .next_cubes
+                .iter()
+                .fold(0, |hp, cube_index| hp + self.cubes[*cube_index].health());
+            let percent_damage = ((damage as f32) / (layer_hp as f32)).min(1.0);
+            for cube_index in self.next_cubes.drain(..) {
                 let cube = &mut self.cubes[cube_index];
-                let remaining_damage = cube.damage(damage, self.next_commit, self.initial_hit);
-                self.initial_hit = false;
-                if remaining_damage == 0 {
-                    return;
+                if cube.is_destroyed() {
+                    continue;
                 }
-                if remaining_damage != damage {
-                    damage = remaining_damage;
+                let cube_damage = ((cube.health() as f32) * percent_damage) as u32;
+                self.damage += cube_damage;
+                cube.damage(cube_damage, self.next_commit, self.initial_hit);
+                self.initial_hit = false;
+                //add connecting cubes to next layer
+                if damage > layer_hp {
+                    let connections = &self.connections[cube_index];
                     self.next_connections.extend(connections);
                 }
             }
-            //on overkill fix damage by removing the remaining damage
+            // if layer did not die or on overkill
             if self.next_connections.is_empty() {
-                self.damage -= damage;
                 return;
             }
-            //FIXME: we dont know what exactly yet; high hp targeting?
-            for connection in self.next_connections.drain(..) {
-                self.next_cubes.push(connection);
-            }
-        }
-    }
-
-    fn apply_damage_unlucky(&mut self, mut damage: u32) {
-        self.damage += damage;
-
-        let mut sink_cubes: Vec<usize> = Vec::new();
-        loop {
-            let mut tick_damage = 0;
-            //apply full damage to every cube
-            for cube_index in self.next_cubes.drain(..) {
-                let connections = &self.connections[cube_index];
-                let cube = &mut self.cubes[cube_index];
-                if cube.health() > damage {
-                    sink_cubes.push(cube_index);
-                } else {
-                    let cube_damage =
-                        damage - cube.damage(damage, self.next_commit, self.initial_hit);
-                    self.initial_hit = false;
-                    if cube_damage > 0 {
-                        tick_damage += cube_damage;
-                        self.next_connections.extend(connections);
-                    }
-                }
-            }
-            if tick_damage >= damage {
-                self.damage += tick_damage - damage;
-                return;
-            } else {
-                damage -= tick_damage;
-                let sinks = sink_cubes.len() as u32;
-                if sinks > 0 {
-                    let damage_per_sink = (damage + sinks - 1) / sinks;
-                    for cube_index in sink_cubes.drain(..) {
-                        let cube = &mut self.cubes[cube_index];
-                        cube.damage(damage_per_sink, self.next_commit, false);
-                    }
-                    self.damage += damage_per_sink * sinks - damage;
-                    return;
-                }
-            }
-            //on overkill fix damage by removing the remaining damage
-            if self.next_connections.is_empty() {
-                self.damage -= damage;
-                return;
-            }
+            damage -= layer_hp;
             for connection in self.next_connections.drain(..) {
                 self.next_cubes.push(connection);
             }
@@ -268,16 +218,6 @@ impl Graph {
         DamageTest {
             graph: self,
             rng_redundancy,
-            damage_per_shot: damage,
-            shots: 0,
-            remaining: 1.0,
-        }
-    }
-
-    #[inline]
-    pub fn damage_test_unlucky(&mut self, damage: u32) -> DamageTestUnlucky<'_> {
-        DamageTestUnlucky {
-            graph: self,
             damage_per_shot: damage,
             shots: 0,
             remaining: 1.0,
@@ -409,70 +349,6 @@ impl<'a> Iterator for DamageTest<'a> {
 }
 
 impl<'a> DamageTest<'a> {
-    pub fn get_shots(&self) -> u32 {
-        self.shots
-    }
-}
-
-#[derive(Debug)]
-pub struct DamageTestUnlucky<'a> {
-    graph: &'a mut Graph,
-    damage_per_shot: u32,
-    shots: u32,
-    remaining: f32,
-}
-
-impl<'a> Iterator for DamageTestUnlucky<'a> {
-    type Item = f32;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        #[derive(Debug, Clone, Copy)]
-        struct MaxState {
-            eff_damage_per_shot: f32,
-            shots_at_target: u32,
-            index: usize,
-        }
-
-        if self.remaining == 0.0 {
-            return None;
-        }
-
-        let mut state: Option<MaxState> = None;
-
-        for cube_index in 0..self.graph.cubes.len() {
-            if self.graph.apply_target(cube_index).is_err() {
-                continue;
-            }
-            let shots_at_target =
-                (self.graph.cubes[cube_index].health() - 1) / self.damage_per_shot + 1;
-            self.graph
-                .apply_damage_unlucky(shots_at_target * self.damage_per_shot);
-            let report = self.graph.commit();
-            self.graph.prev();
-            let damage_eff = self.remaining - report.remaining;
-            let eff_damage_per_shot = damage_eff / (shots_at_target as f32);
-            let max_damage_per_shot = state.map(|s| s.eff_damage_per_shot).unwrap_or(0.0);
-            if eff_damage_per_shot > max_damage_per_shot {
-                state = Some(MaxState {
-                    eff_damage_per_shot,
-                    shots_at_target,
-                    index: cube_index,
-                });
-            }
-        }
-
-        let max = state.unwrap();
-        self.graph.apply_target(max.index).unwrap();
-        self.graph
-            .apply_damage_unlucky(max.shots_at_target * self.damage_per_shot);
-        let report = self.graph.commit();
-        self.remaining = report.remaining;
-        self.shots += max.shots_at_target;
-        Some((1.0 - self.remaining) / 0.8)
-    }
-}
-
-impl<'a> DamageTestUnlucky<'a> {
     pub fn get_shots(&self) -> u32 {
         self.shots
     }
