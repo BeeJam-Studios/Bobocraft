@@ -1,4 +1,5 @@
 use crate::config::Config;
+use bevy::core_pipeline::motion_blur::MotionBlur;
 use bevy::ecs::event::EventCursor;
 use bevy::input::mouse::MouseMotion;
 use bevy::prelude::*;
@@ -49,6 +50,11 @@ fn setup_camera(mut commands: Commands, asset_server: Res<AssetServer>) {
             specular_map: asset_server.load("environment_maps/pisa_specular_rgb9e5_zstd.ktx2"),
             intensity: 1.0,
             rotation: Quat::IDENTITY,
+        },
+        MotionBlur {
+            shutter_angle: 1.0,
+            samples: 2,
+            ..default()
         },
     ));
 }
@@ -152,19 +158,11 @@ fn initial_cursor_grab(
     }
 }
 
-fn spawn_lights(mut commands: Commands) {
-    commands.spawn(DirectionalLight::default());
-    commands.insert_resource(AmbientLight {
-        color: Color::WHITE,
-        brightness: 1000.0,
-    });
-}
-
 pub struct CameraPlugin;
 impl Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<InputState>()
-            .add_systems(Startup, (spawn_lights, setup_camera, initial_cursor_grab))
+            .add_systems(Startup, (setup_camera, initial_cursor_grab))
             .add_systems(Update, (player_move, player_look, cursor_grab));
     }
 }
