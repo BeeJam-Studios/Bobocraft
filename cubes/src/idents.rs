@@ -279,7 +279,7 @@ impl Error for ParseIdentError {}
 
 struct IdentDeserializer<'de>(&'de str);
 
-impl<'de, 'a> de::Deserializer<'de> for &'a mut IdentDeserializer<'de> {
+impl<'de> de::Deserializer<'de> for &mut IdentDeserializer<'de> {
     type Error = ParseIdentError;
 
     forward_to_deserialize_any! {
