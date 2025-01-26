@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_arguments)]
+
 use anyhow::Context;
 use bevy::color::palettes::css;
 use bevy::input::keyboard::KeyboardInput;
@@ -19,7 +21,6 @@ use std::env;
 use std::f32::consts::PI;
 use std::ops::Not;
 use std::path::PathBuf;
-
 pub type Fallible<T = ()> = Result<T, anyhow::Error>;
 
 mod camera;
@@ -125,13 +126,34 @@ impl Revert {
         self.queue.get(self.position)
     }
 
-    pub fn next(&mut self) -> Option<&Item> {
+    pub fn next_item(&mut self) -> Option<&Item> {
         let value = self.queue.get(self.position);
         self.position = self.queue.len().min(self.position + 1);
         value
     }
 }
-
+fn run_for_key_presses(mut reader: EventReader<KeyboardInput>, func: impl FnMut(&KeyCode)) {
+    reader
+        .read()
+        .filter_map(
+            |KeyboardInput {
+                 key_code, state, ..
+             }| {
+                match state.is_pressed() {
+                    true => Some(key_code),
+                    false => None,
+                }
+            },
+        )
+        .for_each(func);
+}
+fn run_for_keybind(mut reader: EventReader<KeyboardInput>, bind: &KeyCode, mut func: impl FnMut()) {
+    for ev in reader.read() {
+        if ev.state.is_pressed() && &ev.key_code == bind {
+            func();
+        }
+    }
+}
 #[derive(Reflect, Clone)]
 pub struct MyRaycastSet;
 
@@ -362,7 +384,7 @@ pub fn damage_on_click(
                     activate_bobo(&mut commands, raycaster, &active_bobo, &corresponding)
                 {
                     let bullets = menu_state.penetration;
-                    let bullet_damage = (menu_state.damage + bullets - 1) / bullets; //round up
+                    let bullet_damage = menu_state.damage.div_ceil(bullets); //round up
 
                     if let Ok(mut graph) = graphs.get_mut(target_bobo.0) {
                         for _n in 0..bullets {
@@ -466,47 +488,44 @@ fn toggle_mode(
 fn delete_bobo(
     mut commands: Commands,
     config: Res<Config>,
-    mut key_event: EventReader<KeyboardInput>,
+    key_event: EventReader<KeyboardInput>,
     mut bobos: Query<Entity, With<FocusedBobo>>,
 ) {
     if let Ok(bobo) = bobos.get_single_mut() {
-        for ev in key_event.read() {
-            if ev.state == ButtonState::Pressed {
-                if ev.key_code == config.delete_bobo {
-                    commands.entity(bobo).despawn_recursive();
-                }
-            }
-        }
+        run_for_keybind(key_event, &config.delete_bobo, || {
+            commands.entity(bobo).despawn_recursive();
+        });
     }
 }
 
 fn undo_redo_damage(
     mut commands: Commands,
     config: Res<Config>,
-    mut key_event: EventReader<KeyboardInput>,
+    key_event: EventReader<KeyboardInput>,
     mut bobos: Query<(Entity, &mut BoboGraph), With<ActiveBobo>>,
     menu_state: Res<UiState>,
 ) {
     if menu_state.mode != Mode::Damage {
         return;
     }
-    if let Ok((bobo, mut graph)) = bobos.get_single_mut() {
-        for ev in key_event.read() {
-            if ev.state == ButtonState::Pressed {
-                if ev.key_code == config.undo {
-                    if graph.prev() {
-                        dbg!(graph.damage_dealt());
-                        commands.entity(bobo).insert(ModifiedBobo);
-                    }
-                } else if ev.key_code == config.redo {
-                    if graph.next() {
-                        dbg!(graph.damage_dealt());
-                        commands.entity(bobo).insert(ModifiedBobo);
-                    }
-                }
+    let Ok((bobo, mut graph)) = bobos.get_single_mut() else {
+        return;
+    };
+    run_for_key_presses(key_event, |code| match code {
+        c if c == &config.undo => {
+            if graph.prev() {
+                dbg!(graph.damage_dealt());
+                commands.entity(bobo).insert(ModifiedBobo);
             }
         }
-    }
+        c if c == &config.redo => {
+            if graph.next() {
+                dbg!(graph.damage_dealt());
+                commands.entity(bobo).insert(ModifiedBobo);
+            }
+        }
+        _ => {}
+    });
 }
 
 fn receive_progress(
@@ -537,7 +556,7 @@ fn receive_progress(
 fn damage_test(
     mut commands: Commands,
     config: Res<Config>,
-    mut key_event: EventReader<KeyboardInput>,
+    key_event: EventReader<KeyboardInput>,
     damage_test_channels: Query<(), With<DamageTestChannel>>,
     mut graphs: Query<&mut BoboGraph>,
     active_bobo: Query<Entity, With<ActiveBobo>>,
@@ -549,40 +568,37 @@ fn damage_test(
         return;
     }
     let raycaster = to.single();
-    for ev in key_event.read() {
-        if ev.state == ButtonState::Pressed {
-            if ev.key_code == config.test {
-                if let Some((bobo, _)) =
-                    activate_bobo(&mut commands, raycaster, &active_bobo, &corresponding)
-                {
-                    if damage_test_channels.get(*bobo).is_ok() {
-                        return;
-                    }
-                    if let Ok(mut graph) = graphs.get_mut(*bobo).map(|g| g.clone()) {
-                        let (tx, rx) = bounded::<DamageTestProgress>(10);
-                        commands.entity(*bobo).insert(DamageTestChannel(rx));
-                        let damage = (menu_state.damage - 1) / menu_state.penetration + 1;
-                        std::thread::spawn(move || {
-                            let mut damage_test = graph.damage_test(damage, 1);
-                            for progress in &mut damage_test {
-                                tx.send(DamageTestProgress::Progress((progress * 100.0) as u8))
-                                    .unwrap();
-                            }
-                            let total_shots = damage_test.get_shots();
-                            graph.reset();
-                            tx.send(DamageTestProgress::Done { graph, total_shots })
-                                .unwrap();
-                        });
-                    }
-                }
+    run_for_keybind(key_event, &config.test, || {
+        let Some((bobo, Ok(mut graph))) =
+            activate_bobo(&mut commands, raycaster, &active_bobo, &corresponding).and_then(
+                |(bobo, _)| match damage_test_channels.get(*bobo).is_ok() {
+                    true => None,
+                    false => Some((bobo, graphs.get_mut(*bobo).map(|g| g.clone()))),
+                },
+            )
+        else {
+            return;
+        };
+        let (tx, rx) = bounded::<DamageTestProgress>(10);
+        commands.entity(*bobo).insert(DamageTestChannel(rx));
+        let damage = (menu_state.damage - 1) / menu_state.penetration + 1;
+        std::thread::spawn(move || {
+            let mut damage_test = graph.damage_test(damage, 1);
+            for progress in &mut damage_test {
+                tx.send(DamageTestProgress::Progress((progress * 100.0) as u8))
+                    .unwrap();
             }
-        }
-    }
+            let total_shots = damage_test.get_shots();
+            graph.reset();
+            tx.send(DamageTestProgress::Done { graph, total_shots })
+                .unwrap();
+        });
+    });
 }
 
 fn undo_redo_edit(
     config: Res<Config>,
-    mut key_event: EventReader<KeyboardInput>,
+    key_event: EventReader<KeyboardInput>,
     active_bobo: Query<Entity, With<ActiveBobo>>,
     mut revert: Query<&mut Revert>,
     mut scenes: Query<(&mut Visibility, &Placement)>,
@@ -593,43 +609,39 @@ fn undo_redo_edit(
     }
     if let Ok(bobo) = active_bobo.get_single() {
         let mut revert = revert.get_mut(bobo).unwrap();
-        for ev in key_event.read() {
-            if ev.state == ButtonState::Pressed {
-                if ev.key_code == config.undo {
-                    match revert.prev() {
-                        Some(Single(entity)) => {
-                            let (mut v, placement) = scenes.get_mut(*entity).unwrap();
-                            debug!("showing {}", placement.cube);
-                            *v = Visibility::Visible;
-                        }
-                        Some(Multiple(cubes)) => {
-                            for entity in cubes {
-                                let (mut v, placement) = scenes.get_mut(*entity).unwrap();
-                                debug!("showing {}", placement.cube);
-                                *v = Visibility::Visible;
-                            }
-                        }
-                        _ => (),
-                    }
-                } else if ev.key_code == config.redo {
-                    match revert.next() {
-                        Some(Single(entity)) => {
-                            let (mut v, placement) = scenes.get_mut(*entity).unwrap();
-                            debug!("hiding {}", placement.cube);
-                            *v = Visibility::Hidden;
-                        }
-                        Some(Multiple(cubes)) => {
-                            for entity in cubes {
-                                let (mut v, placement) = scenes.get_mut(*entity).unwrap();
-                                debug!("hiding {}", placement.cube);
-                                *v = Visibility::Hidden;
-                            }
-                        }
-                        _ => (),
+        run_for_key_presses(key_event, |code| match code {
+            c if c == &config.undo => match revert.prev() {
+                Some(Single(entity)) => {
+                    let (mut v, placement) = scenes.get_mut(*entity).unwrap();
+                    debug!("showing {}", placement.cube);
+                    *v = Visibility::Visible;
+                }
+                Some(Multiple(cubes)) => {
+                    for entity in cubes {
+                        let (mut v, placement) = scenes.get_mut(*entity).unwrap();
+                        debug!("showing {}", placement.cube);
+                        *v = Visibility::Visible;
                     }
                 }
-            }
-        }
+                _ => (),
+            },
+            c if c == &config.redo => match revert.next_item() {
+                Some(Single(entity)) => {
+                    let (mut v, placement) = scenes.get_mut(*entity).unwrap();
+                    debug!("hiding {}", placement.cube);
+                    *v = Visibility::Hidden;
+                }
+                Some(Multiple(cubes)) => {
+                    for entity in cubes {
+                        let (mut v, placement) = scenes.get_mut(*entity).unwrap();
+                        debug!("hiding {}", placement.cube);
+                        *v = Visibility::Hidden;
+                    }
+                }
+                _ => (),
+            },
+            _ => {}
+        });
     }
 }
 
@@ -637,45 +649,39 @@ fn reset(
     mut commands: Commands,
     mut active_bobo: Query<(Entity, &mut BoboGraph), With<ActiveBobo>>,
     config: Res<Config>,
-    mut key_event: EventReader<KeyboardInput>,
+    key_event: EventReader<KeyboardInput>,
 ) {
     if let Ok((bobo, mut graph)) = active_bobo.get_single_mut() {
-        for ev in key_event.read() {
-            if ev.state == ButtonState::Pressed {
-                if ev.key_code == config.reset {
-                    graph.reset();
-                    commands.entity(bobo).insert(ModifiedBobo);
-                }
-            }
-        }
+        run_for_keybind(key_event, &config.reset, || {
+            graph.reset();
+            commands.entity(bobo).insert(ModifiedBobo);
+        });
     }
 }
 
 fn toggle_background(
     config: Res<Config>,
-    mut key_event: EventReader<KeyboardInput>,
+    key_event: EventReader<KeyboardInput>,
     mut clear_color: ResMut<ClearColor>,
 ) {
-    for ev in key_event.read() {
-        if ev.key_code == config.toggle_background && ev.state == ButtonState::Pressed {
-            *clear_color.as_mut() = ClearColor(
-                if clear_color
-                    .to_linear()
-                    .to_f32_array_no_alpha()
-                    .into_iter()
-                    .reduce(|acc, e| acc + e)
-                    .unwrap()
-                    < 3.0
-                {
-                    info!("Changed background color from black to white");
-                    Color::WHITE
-                } else {
-                    info!("Changed background color from white to black");
-                    Color::BLACK
-                },
-            );
-        }
-    }
+    run_for_keybind(key_event, &config.toggle_background, || {
+        *clear_color.as_mut() = ClearColor(
+            if clear_color
+                .to_linear()
+                .to_f32_array_no_alpha()
+                .into_iter()
+                .reduce(|acc, e| acc + e)
+                .unwrap()
+                < 3.0
+            {
+                info!("Changed background color from black to white");
+                Color::WHITE
+            } else {
+                info!("Changed background color from white to black");
+                Color::BLACK
+            },
+        );
+    });
 }
 
 pub fn spawn_bobo(
@@ -912,7 +918,7 @@ fn setup_crosshair(mut commands: Commands) {
                                 height: Val::Px(5.0),
                                 ..default()
                             },
-                            BackgroundColor(Color::Srgba(css::LIMEGREEN).into()),
+                            BackgroundColor(Color::Srgba(css::LIMEGREEN)),
                         ))
                         .insert(Crosshair);
                 });
@@ -966,7 +972,7 @@ fn crosshair_visibility(
         };
     }
 }
-
+#[allow(clippy::type_complexity)]
 fn button_system(
     mut interaction_query: Query<
         (&Interaction, &mut BorderColor, &Children),
@@ -1036,7 +1042,7 @@ fn menu_visibility(
                                 ..default()
                             },
                             BackgroundColor(Color::BLACK),
-                            BorderColor(BORDER_COLOR_INACTIVE.into()),
+                            BorderColor(BORDER_COLOR_INACTIVE),
                             Button,
                         ))
                         .with_children(|parent| {
@@ -1058,7 +1064,7 @@ fn menu_visibility(
                             padding: UiRect::all(Val::Px(5.0)),
                             ..default()
                         },
-                        BorderColor(BORDER_COLOR_INACTIVE.into()),
+                        BorderColor(BORDER_COLOR_INACTIVE),
                         BackgroundColor(Color::BLACK),
                         TextInput,
                         TextInputTextColor(TextColor(color)),
@@ -1082,7 +1088,7 @@ fn menu_visibility(
                             padding: UiRect::all(Val::Px(5.0)),
                             ..default()
                         },
-                        BorderColor(BORDER_COLOR_INACTIVE.into()),
+                        BorderColor(BORDER_COLOR_INACTIVE),
                         BackgroundColor(Color::BLACK),
                         TextInput,
                         TextInputTextColor(TextColor(color)),
