@@ -8,8 +8,10 @@ bevy_simple_text_input = "0.10"
 serde = "1"
 serde_json = "1"
 anyhow = "1"
-bevy_mod_raycast = { path = "../bevy/raycast", default-features = false }
-bevy-scene-hook = { path = "../bevy/scene-hook" }
+# latest commits as of jan 25 2025
+# pinned to prevent a compile error down the line due to updates
+bevy_mod_raycast = { git = "https://github.com/NthTensor/bevy_mod_raycast.git", rev = "8416f6ec9008a0736f65b5788a3f85c05288efd2", default-features = false }
+bevy-scene-hook = { git = "https://github.com/AlephCubed/bevy-scene-hook.git", rev = "7f944bcadd3f4c01cd4b6e436435ee4bda720910" }
 bobocraft-format = { path = "../format" }
 bobocraft-cubes = { path = "../cubes" }
 bobocraft-graph = { path = "../graph" }
