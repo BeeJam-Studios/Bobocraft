@@ -3,7 +3,6 @@ use bevy::color::palettes::css;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input::mouse::MouseButtonInput;
 use bevy::input::ButtonState;
-use bevy::pbr::DirectionalLightShadowMap;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 use bevy::winit::WinitSettings;
@@ -19,6 +18,7 @@ use crossbeam_channel::{bounded, Receiver};
 use std::env;
 use std::ops::Not;
 use std::path::PathBuf;
+use std::f32::consts::PI;
 
 pub type Fallible<T = ()> = Result<T, anyhow::Error>;
 
@@ -919,6 +919,35 @@ fn setup_crosshair(mut commands: Commands) {
         });
 }
 
+fn setup_lights(mut commands: Commands) {
+    commands.spawn((DirectionalLight {
+        color: Color::WHITE,
+        illuminance: 2000.0,
+        ..default()
+    },
+    Transform {
+        translation: Vec3::new(0.0, 10.0, 5.0),
+        rotation: Quat::from_euler(EulerRot::XYZ, -PI/8.0, -PI/ 8.0, -PI/8.0),
+        ..default()
+    }));
+
+    commands.spawn((DirectionalLight {
+        color: Color::WHITE,
+        illuminance: 8000.0,
+        ..default()
+    },
+    Transform {
+        translation: Vec3::new(0.0, 10.0, 5.0),
+        rotation: Quat::from_euler(EulerRot::XYZ, -PI/2.0, 0.0, 0.0),
+        ..default()
+    }));
+
+    commands.insert_resource(AmbientLight {
+        color: Color::WHITE,
+        brightness: 100.0,
+    });
+}
+
 fn crosshair_visibility(
     mut crosshairs: Query<&mut Visibility, With<Crosshair>>,
     config: Res<Config>,
@@ -1138,12 +1167,7 @@ fn main() -> Fallible {
     app.insert_resource(config)
         .insert_resource(RaycastPluginState::<MyRaycastSet>::default())
         .insert_resource(WinitSettings::game())
-        .insert_resource(ClearColor(Color::BLACK))
-        .insert_resource(AmbientLight {
-            color: Color::WHITE,
-            brightness: 0.5,
-        })
-        .insert_resource(DirectionalLightShadowMap::default());
+        .insert_resource(ClearColor(Color::BLACK));
 
     app.init_resource::<UiState>();
 
@@ -1189,7 +1213,7 @@ fn main() -> Fallible {
     )
     .add_systems(PostUpdate, update_bobo);
 
-    app.add_systems(Startup, (setup_ui, setup_crosshair));
+    app.add_systems(Startup, (setup_ui, setup_crosshair, setup_lights));
 
     app.add_event::<Mode>().add_event::<DamageTestProgress>();
 
