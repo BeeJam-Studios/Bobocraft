@@ -11,6 +11,10 @@ pub struct SimilarCube<'a> {
 
 impl SimilarCube<'_> {
     pub fn base_cube(&self) -> &'static Cube {
+        fn first_two_eq(idents: &[Ident], first_two: (Ident, Ident)) -> bool {
+            idents.first() == Some(&first_two.0) && idents.get(1) == Some(&first_two.1)
+        }
+
         let i0 = self.cube.idents[0];
         let opt_i1 = if self.cube.idents[0] == Ident::ElectroShield {
             Some(self.cube.idents[1])
@@ -24,24 +28,20 @@ impl SimilarCube<'_> {
 
         if let Some(tier) = self.cube.display_tier() {
             if let Some(i1) = opt_i1 {
-                CUBES.iter().find(|cube| {
-                    cube.stats.tier == tier
-                        && cube.idents.get(0) == Some(&i0)
-                        && cube.idents.get(1) == Some(&i1)
-                })
+                CUBES
+                    .iter()
+                    .find(|cube| cube.stats.tier == tier && first_two_eq(cube.idents, (i0, i1)))
             } else {
                 CUBES
                     .iter()
-                    .find(|cube| cube.stats.tier == tier && cube.idents.get(0) == Some(&i0))
+                    .find(|cube| cube.stats.tier == tier && cube.idents.first() == Some(&i0))
             }
+        } else if let Some(i1) = opt_i1 {
+            CUBES
+                .iter()
+                .find(|cube| first_two_eq(cube.idents, (i0, i1)))
         } else {
-            if let Some(i1) = opt_i1 {
-                CUBES
-                    .iter()
-                    .find(|cube| cube.idents.get(0) == Some(&i0) && cube.idents.get(1) == Some(&i1))
-            } else {
-                CUBES.iter().find(|cube| cube.idents.get(0) == Some(&i0))
-            }
+            CUBES.iter().find(|cube| cube.idents.first() == Some(&i0))
         }
         .unwrap()
     }
