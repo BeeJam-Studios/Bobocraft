@@ -2,3 +2,4 @@ Cargo.lock
 *.json
 *.bobo
 *.pkg.*
+target
