@@ -115,10 +115,7 @@ impl Graph {
 
     fn apply_damage(&mut self, mut damage: u32) {
         debug_assert!(self.next_connections.is_empty());
-        loop {
-            if damage == 0 {
-                return;
-            }
+        while damage != 0 {
             let layer_hp = self
                 .next_cubes
                 .iter()
