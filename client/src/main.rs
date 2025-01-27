@@ -1,6 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use anyhow::Context;
+use avian3d::prelude::*;
 use bevy::color::palettes::css;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input::mouse::MouseButtonInput;
@@ -1183,6 +1184,7 @@ fn main() -> Fallible {
 
     app.add_plugins((
         plugins,
+        PhysicsPlugins::default(),
         DeferredRaycastingPlugin::<MyRaycastSet>::default(),
         HookPlugin,
         CameraPlugin,
