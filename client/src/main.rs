@@ -16,9 +16,9 @@ use bobocraft_graph::damage::{Graph as DamageGraph, GraphBuilder};
 use config::Config;
 use crossbeam_channel::{bounded, Receiver};
 use std::env;
+use std::f32::consts::PI;
 use std::ops::Not;
 use std::path::PathBuf;
-use std::f32::consts::PI;
 
 pub type Fallible<T = ()> = Result<T, anyhow::Error>;
 
@@ -920,27 +920,31 @@ fn setup_crosshair(mut commands: Commands) {
 }
 
 fn setup_lights(mut commands: Commands) {
-    commands.spawn((DirectionalLight {
-        color: Color::WHITE,
-        illuminance: 2000.0,
-        ..default()
-    },
-    Transform {
-        translation: Vec3::new(0.0, 10.0, 5.0),
-        rotation: Quat::from_euler(EulerRot::XYZ, -PI/8.0, -PI/ 8.0, -PI/8.0),
-        ..default()
-    }));
+    commands.spawn((
+        DirectionalLight {
+            color: Color::WHITE,
+            illuminance: 2000.0,
+            ..default()
+        },
+        Transform {
+            translation: Vec3::new(0.0, 10.0, 5.0),
+            rotation: Quat::from_euler(EulerRot::XYZ, -PI / 8.0, -PI / 8.0, -PI / 8.0),
+            ..default()
+        },
+    ));
 
-    commands.spawn((DirectionalLight {
-        color: Color::WHITE,
-        illuminance: 8000.0,
-        ..default()
-    },
-    Transform {
-        translation: Vec3::new(0.0, 10.0, 5.0),
-        rotation: Quat::from_euler(EulerRot::XYZ, -PI/2.0, 0.0, 0.0),
-        ..default()
-    }));
+    commands.spawn((
+        DirectionalLight {
+            color: Color::WHITE,
+            illuminance: 8000.0,
+            ..default()
+        },
+        Transform {
+            translation: Vec3::new(0.0, 10.0, 5.0),
+            rotation: Quat::from_euler(EulerRot::XYZ, -PI / 2.0, 0.0, 0.0),
+            ..default()
+        },
+    ));
 
     commands.insert_resource(AmbientLight {
         color: Color::WHITE,
