@@ -147,7 +147,7 @@ impl Graph {
                 return;
             }
             damage -= layer_hp;
-            self.next_cubes.drain(..);
+            self.next_cubes.clear();
             for connection in self.next_connections.drain(..) {
                 self.next_cubes.push(connection);
             }
