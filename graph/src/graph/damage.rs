@@ -116,11 +116,14 @@ impl Graph {
     fn apply_damage(&mut self, mut damage: u32) {
         debug_assert!(self.next_connections.is_empty());
         loop {
+            if damage == 0 {
+                return;
+            }
             let layer_hp = self
                 .next_cubes
                 .iter()
                 .fold(0, |hp, cube_index| hp + self.cubes[*cube_index].health());
-            for cube_index in self.next_cubes.drain(..) {
+            for &cube_index in self.next_cubes.iter() {
                 let cube = &mut self.cubes[cube_index];
                 if cube.is_destroyed() {
                     continue;
@@ -134,7 +137,7 @@ impl Graph {
                 self.damage += cube_damage;
                 self.initial_hit = false;
                 //add connecting cubes to next layer
-                if damage > layer_hp {
+                if damage >= layer_hp {
                     let connections = &self.connections[cube_index];
                     self.next_connections.extend(connections);
                 }
@@ -144,6 +147,7 @@ impl Graph {
                 return;
             }
             damage -= layer_hp;
+            self.next_cubes.drain(..);
             for connection in self.next_connections.drain(..) {
                 self.next_cubes.push(connection);
             }
