@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Rust cache
+        uses: Swatinem/rust-cache@v2
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Rust cache
+        uses: Swatinem/rust-cache@v2
+      - name: System dependencies
+        run: sudo apt-get install libwayland-dev libasound2-dev libudev-dev
+      - name: Run `cargo build`
+        run: cargo build
