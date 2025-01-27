@@ -33,4 +33,4 @@ jobs:
       - name: System dependencies
         run: sudo apt-get install libwayland-dev libasound2-dev libudev-dev
       - name: Run `cargo build`
-        run: cargo build
+        run: cargo build --features sped
