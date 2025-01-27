@@ -54,7 +54,6 @@ fn setup_camera(mut commands: Commands, asset_server: Res<AssetServer>) {
         MotionBlur {
             shutter_angle: 1.0,
             samples: 2,
-            ..default()
         },
     ));
 }
