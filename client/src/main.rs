@@ -406,7 +406,7 @@ pub fn damage_on_click(
                             }
                             graph.damage(bullet_damage); //apply damage
                         }
-                        graph.commit();
+                        dbg!(graph.commit());
                         commands.entity(target_bobo.0).insert(ModifiedBobo);
                     }
                 }
