@@ -709,18 +709,18 @@ pub fn spawn_bobo(
 
     entity_commands.with_children(|parent| {
         for p in placements.iter() {
-            debug!("spawning {} at {:?}", p.cube, p.translation);
             max.x = f32::min(max.x, p.translation.x as f32 * -1.0);
             max.y = f32::min(max.y, p.translation.z as f32);
             max.z = f32::min(max.z, p.translation.y as f32);
         }
 
         for p in placements {
+            debug!("spawning {} at {:?}", p.cube, p.translation);
             let translation = Vec3::new(
                 p.translation.x as f32 * -1.0,
                 p.translation.z as f32,
                 p.translation.y as f32,
-            ) - max / 2.0;
+            );
 
             let rotation = Quat::from_euler(
                 EulerRot::YZX,
@@ -748,13 +748,38 @@ pub fn spawn_bobo(
                 transform,
                 Placement(p),
             ));
+
+            let scale = Transform::from_scale(Vec3::new(1.0, 1.0, 1.0));
+            for c in p.cube.connections {
+                info!("{:?}", c);
+                let translation = Vec3::new(
+                    (c.x as f32) / 10.0,
+                    (c.z as f32) / 10.0, // ok
+                    (c.y as f32) / 10.0,
+                );
+                let transform = scale.with_translation(translation).with_rotation(rotation);
+
+                entity_commands.with_children(|cube| {
+                    let mut entity_commands = cube.spawn_empty();
+                    entity_commands.insert((
+                        HookedSceneBundle {
+                            scene: SceneRoot(
+                                asset_server.load(format!("gltf/medium_cube.glb#Scene0")),
+                            ),
+                            hook: SceneHook::new(move |entity, commands| {
+                                if entity.get::<Mesh3d>().is_some() {
+                                    commands.insert(RaycastMesh::<MyRaycastSet>::default());
+                                    //_commands.insert(p.color);
+                                }
+                            }),
+                        },
+                        transform,
+                    ));
+                });
+            }
         }
         info!("bobo named {name} spawned");
     });
-
-    for mut bobo in bobos.iter_mut() {
-        bobo.translation.z -= max.z + 40.0;
-    }
 }
 
 #[derive(Event, Debug, Clone)]
