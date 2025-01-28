@@ -30,9 +30,8 @@ fn validate_cube_connections() {
     for cube in CUBES.iter() {
         let mut cache = HashMap::new();
         for (i, &connection) in cube.connections.iter().enumerate() {
-            let sum =
-                (connection.x % 2).abs() + (connection.y % 2).abs() + (connection.z % 2).abs();
-            if sum - 1 != 0 {
+            let sum = connection.x.abs() % 2 + connection.y.abs() % 2 + connection.z.abs() % 2;
+            if sum != 1 {
                 panic!("misaligned connection point on position {i} on cube {cube}");
             }
             if let Some(j) = cache.remove(&connection) {
