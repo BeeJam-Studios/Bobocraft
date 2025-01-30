@@ -8,6 +8,7 @@ use bevy::input::ButtonState;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 use bevy::winit::WinitSettings;
+use bevy_embedded_assets::EmbeddedAssetPlugin;
 use bevy_mod_raycast::prelude::*;
 use bevy_scene_hook::{HookPlugin, HookedSceneBundle, SceneHook};
 use bevy_simple_text_input::{
@@ -731,7 +732,9 @@ pub fn spawn_bobo(
             let cube_id = entity_commands.id();
             entity_commands.insert((
                 HookedSceneBundle {
-                    scene: SceneRoot(asset_server.load(format!("gltf/{:?}.glb#Scene0", p.cube))),
+                    scene: SceneRoot(
+                        asset_server.load(format!("embedded://gltf/{:?}.glb#Scene0", p.cube)),
+                    ),
                     hook: SceneHook::new(move |entity, commands| {
                         if entity.get::<Mesh3d>().is_some() {
                             commands.insert(RaycastMesh::<MyRaycastSet>::default());
@@ -810,7 +813,7 @@ impl Default for UiState {
 const FONT_SIZE: f32 = 40.0;
 
 fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let font = asset_server.load("fonts/FiraMono-Medium.ttf");
+    let font = asset_server.load("embedded://fonts/FiraMono-Medium.ttf");
     let color = Color::Srgba(css::BLUE);
     commands
         .spawn((
@@ -1008,7 +1011,7 @@ fn menu_visibility(
         if let Ok(entity) = menu.get_single() {
             commands.entity(entity).despawn_recursive();
         } else {
-            let font = asset_server.load("fonts/FiraMono-Medium.ttf");
+            let font = asset_server.load("embedded://fonts/FiraMono-Medium.ttf");
             let color = match menu_state.mode {
                 Mode::Edit => Color::Srgba(css::BLUE),
                 Mode::Damage => Color::Srgba(css::RED),
@@ -1183,6 +1186,7 @@ fn main() -> Fallible {
 
     app.add_plugins((
         plugins,
+        EmbeddedAssetPlugin::default(),
         DeferredRaycastingPlugin::<MyRaycastSet>::default(),
         HookPlugin,
         CameraPlugin,

@@ -24,4 +24,4 @@ jobs:
       - name: Check formatting
         run: cargo fmt --all -- --check
       - name: Clippy
-        run: cargo clippy --workspace -- -D warnings
+        run: "BEVY_ASSET_PATH=$GITHUB_WORKSPACE/client/assets cargo clippy --workspace -- -D warnings"
