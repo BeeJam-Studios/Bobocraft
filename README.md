@@ -15,11 +15,11 @@ Bobocraft uses [Clippy](https://doc.rust-lang.org/clippy/) for checking and lint
 
 ## Build and Running
 
-#### **Linux**:  
+### **Linux**:  
 
 Clone Bobocraft and robocraft-1 repo next to each other and run from `client/src/main.rs` the function `main()`
 
-#### **Windows**:
+### **Windows**:
   
 Clone Bobocraft and robocraft-1 repo next to each other. Because of the Windows file system you should make a manual softlink between the asset folder and the game. You can do this from the cmd running:
 
