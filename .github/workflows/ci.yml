@@ -5,7 +5,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  BEVY_ASSET_PATH: client/assets
+  BEVY_ASSET_PATH: $GITHUB_WORKSPACE/client/assets
 
 defaults:
   run:
