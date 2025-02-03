@@ -20,8 +20,10 @@ jobs:
       - name: Set up Rust cache
         uses: Swatinem/rust-cache@v2
       - name: System dependencies
-        run: sudo apt-get install libwayland-dev libasound2-dev libudev-dev
+        run: |
+          sudo apt-get update
+          sudo apt-get install libwayland-dev libasound2-dev libudev-dev
       - name: Check formatting
         run: cargo fmt --all -- --check
       - name: Clippy
-        run: cargo clippy --workspace -- -D warnings
+        run: "BEVY_ASSET_PATH=$GITHUB_WORKSPACE/client/assets cargo clippy --workspace -- -D warnings"
