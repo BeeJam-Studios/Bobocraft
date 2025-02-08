@@ -19,6 +19,9 @@ bevy_editor_pls = { version = "0.10", optional = true }
 crossbeam-channel = "0.5"
 directories = "6"
 bevy_embedded_assets = "0.12"
+threemf = "0.7.0"
+async-std = "1.10"
+postcard = "1.1.1"
 
 [dependencies.bevy]
 version = "0.15"

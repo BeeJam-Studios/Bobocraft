@@ -37,6 +37,7 @@ mod default {
     default!(toggle_mode, KeyCode::KeyM, KeyCode);
     default!(delete_bobo, KeyCode::Backspace, KeyCode);
     default!(toggle_cursor_grab, KeyCode::Escape, KeyCode);
+    default!(print_bobo, KeyCode::KeyP, KeyCode);
 
     pub fn movement() -> Movement {
         serde_json::from_str("{}").unwrap()
@@ -83,6 +84,8 @@ pub struct Config {
     pub delete_bobo: KeyCode,
     #[serde(default = "default::toggle_cursor_grab")]
     pub toggle_cursor_grab: KeyCode,
+    #[serde(default = "default::print_bobo")]
+    pub print_bobo: KeyCode,
     #[serde(default)]
     pub gpu_backend: Option<String>,
 }
@@ -104,6 +107,7 @@ fn get_config_path() -> Fallible<PathBuf> {
 }
 
 fn try_read_config() -> Option<Result<Config, serde_json::Error>> {
+    print!("config file found at {:?}", get_config_path().ok()?.join(CONFIG_FILE_NAME));
     match read_to(get_config_path().ok()?.join(CONFIG_FILE_NAME)) {
         Some(config) => Some(config),
         None => read_to(CONFIG_FILE_NAME),

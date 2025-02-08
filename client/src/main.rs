@@ -6,6 +6,8 @@ use bevy::input::keyboard::KeyboardInput;
 use bevy::input::mouse::MouseButtonInput;
 use bevy::input::ButtonState;
 use bevy::prelude::*;
+use std::sync::Arc;
+use bevy::tasks::IoTaskPool;
 use bevy::window::PrimaryWindow;
 use bevy::winit::WinitSettings;
 use bevy_embedded_assets::EmbeddedAssetPlugin;
@@ -34,6 +36,21 @@ use camera::{CameraPlugin, Locked};
 pub fn not_any_with_component<T: Component>(query: Query<(), With<T>>) -> bool {
     query.is_empty()
 }
+
+use std::collections::HashMap;
+use std::io::Cursor;
+
+use threemf::{Mesh};
+use threemf::model::Item as ThreemfItem;
+use threemf::model::{Model, Object, Resources, Build, Metadata, Component as ThreemfComponent, Components};
+
+use async_std::fs::File;
+use async_std::prelude::*;
+use postcard;
+
+use std::fs::File as StdFile;
+use std::io::Write;
+
 
 #[derive(Debug, Component)]
 pub struct Menu;
@@ -99,6 +116,14 @@ pub struct BoboGraph(DamageGraph);
 pub enum Item {
     Single(Entity),
     Multiple(Vec<Entity>),
+}
+
+#[derive(Debug, Clone)]
+struct PartInfo {
+    name: String,
+    tier: u32,
+    visibility: Visibility,
+    transform: Transform,
 }
 
 use Item::*;
@@ -498,6 +523,165 @@ fn delete_bobo(
         });
     }
 }
+
+fn print_bobo(
+    mut commands: Commands,
+    config: Res<Config>,
+    key_event: EventReader<KeyboardInput>,
+    focused_bobo: Query<(Entity, &Children), With<FocusedBobo>>,
+    mut cubes: Query<(&mut Visibility, &Transform, &Placement)>,
+) {
+    run_for_keybind(key_event, &config.print_bobo, || {
+        info!("Exporting Bobo to 3MF"); 
+        if let Ok((bobo_entity, children)) = focused_bobo.get_single() {
+            println!("Focused Bobo Entity: {:?}", bobo_entity);
+
+            let mut parts_info: Vec<PartInfo> = Vec::new();
+
+            for &child in children.into_iter() {
+                if let Ok((visibility, transform, placement)) = cubes.get_mut(child) {
+                    if *visibility == Visibility::Visible || *visibility == Visibility::Inherited {
+                        let name = placement.cube.idents.iter().map(|s| format!("{:?}", s)).collect::<Vec<_>>().join("_");
+                        
+                        parts_info.push(PartInfo {
+                            name: name.clone(),
+                            tier: placement.cube.stats.tier,
+                            visibility: *visibility,
+                            transform: *transform,
+                        });
+                        /* 
+                        println!(
+                            "Part: {:?}, Translation: {:?}, Placement {:?}, Rotation: {:?}, Name: {:?} Visibility {:?}",
+                            child,
+                            transform.translation,
+                            placement.translation,
+                            placement.rotation,
+                            name,
+                            *visibility
+                        );
+                        */
+                        
+                    }
+                }
+            }
+            
+            //Background task
+            let task_pool = IoTaskPool::get();
+            let parts_info = Arc::new(parts_info);
+            task_pool.spawn(async move {
+                create_3mf_file(parts_info).await.unwrap();
+            }).detach();
+
+
+        } else {
+            println!("No focused bobo found.");
+        }
+        
+
+    });
+}
+
+
+async fn create_3mf_file(parts_info: Arc<Vec<PartInfo>>) -> Result<(), Box<dyn std::error::Error>> {
+    let mut resources = Resources::default();
+    let mut build = Build::default();
+    let mut id = 0;
+    let mut cache = HashMap::new();
+    let root_path = env::current_dir()?.join("client/assets/3mm"); //TODO: FIX but asset server doesn't work in async
+    for part in parts_info.iter() {
+        let name = part.name.to_lowercase().replace(" ", "_");
+        
+        let object: Object = if let Some(objectid) = cache.get(&name).cloned() {
+            let component = ThreemfComponent {
+                objectid,
+                transform: None,
+            };
+            let components = Components {
+                component: vec![component],
+            };
+            Object {
+                id,
+                partnumber: None,
+                name: Some(name.clone()), 
+                pid: None,
+                mesh: None,
+                components: Some(components),
+            }
+        } else {
+            let mut buf = Vec::new();
+            let path = root_path.join(format!("{}.3mm", name.clone()));
+            let mut file = match File::open(path.clone()).await {
+                Ok(file) => file,
+                Err(_) => {
+                    let path = root_path.join(format!("t{}_{}.3mm", part.tier.clone(), name.clone()));
+                    match File::open(path.clone()).await {
+                        Ok(file) => file,
+                        Err(_) => {
+                            println!("Error loading file: {:?}", path.clone());
+                            continue;
+                        }
+                    }
+                }
+            };
+
+            file.read_to_end(&mut buf).await?;
+            let mesh: Mesh = postcard::from_bytes(&buf)?;
+            cache.insert(name.clone(), id);
+            Object {
+                id,
+                partnumber: None,
+                name: Some(name.clone()),
+                pid: None,
+                components: None,
+                mesh: Some(mesh),
+            }
+        };
+        resources.object.push(object);
+        let rotation = part.transform.rotation;
+
+        let transform_matrix = Mat4::from_scale_rotation_translation(
+            part.transform.scale,
+            rotation,
+            part.transform.translation,
+        );
+
+        let transform = [
+            transform_matrix.x_axis.x as f64, transform_matrix.x_axis.y as f64, transform_matrix.x_axis.z as f64,
+            transform_matrix.y_axis.x as f64, transform_matrix.y_axis.y as f64, transform_matrix.y_axis.z as f64,
+            transform_matrix.z_axis.x as f64, transform_matrix.z_axis.y as f64, transform_matrix.z_axis.z as f64,
+            transform_matrix.w_axis.x as f64, transform_matrix.w_axis.y as f64, transform_matrix.w_axis.z as f64,
+        ];
+
+        let item = ThreemfItem {
+            objectid: id,
+            transform: Some(transform),
+            partnumber: None,
+        };
+        build.item.push(item);
+        id += 1;
+    }
+
+    let metadata = vec![Metadata {
+        name: String::from("Copyright"),
+        value: Some(String::from("Bobocraft, 2024")),
+    }];
+
+    let model = Model {
+        resources,
+        metadata,
+        build,
+        ..Default::default()
+    };
+
+    let mut buf = Cursor::new(Vec::new());
+    threemf::write(&mut buf, model)?;
+    let mut file = StdFile::create("bobo.3mf")?;
+    file.write_all(&buf.into_inner())?;
+    file.sync_data()?;
+    println!("3MF file created successfully.");
+    Ok(())
+}
+
 
 fn undo_redo_damage(
     mut commands: Commands,
@@ -1216,6 +1400,7 @@ fn main() -> Fallible {
             reset,
             damage_test,
             toggle_background,
+            print_bobo,
             crosshair_visibility,
             delete_on_click.run_if(not_any_with_component::<Menu>),
             damage_on_click.run_if(not_any_with_component::<Menu>),
