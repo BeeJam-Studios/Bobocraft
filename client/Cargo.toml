@@ -18,6 +18,7 @@ bobocraft-graph = { path = "../graph" }
 bevy_editor_pls = { version = "0.10", optional = true }
 crossbeam-channel = "0.5"
 directories = "6"
+bevy_embedded_assets = "0.12"
 
 [dependencies.bevy]
 version = "0.15"
