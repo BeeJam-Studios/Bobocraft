@@ -694,7 +694,7 @@ pub fn spawn_bobo(
     mut bobos: Query<&mut Transform, With<BoboName>>,
 ) {
     debug!("spawning bobo named {name}");
-    let scale = Transform::from_scale(Vec3::new(5.0, 5.0, 5.0));
+    let scale = Transform::from_scale(Vec3::splat(5.0));
     let mut entity_commands = commands.spawn_empty();
     let bobo_id = entity_commands.id();
 
@@ -749,7 +749,7 @@ pub fn spawn_bobo(
                 Placement(p),
             ));
 
-            let scale = Transform::from_scale(Vec3::new(1.0, 1.0, 1.0));
+            let scale = Transform::from_scale(Vec3::splat(1.0));
             for c in p.cube.connections {
                 info!("{:?}", c);
                 let translation = Vec3::new(
