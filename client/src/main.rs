@@ -755,9 +755,9 @@ pub fn spawn_bobo(
             for c in p.cube.connections {
                 info!("{:?}", c);
                 let translation = Vec3::new(
-                    (c.x as f32) / ASSET_SCALE * 2,
-                    (c.z as f32) / ASSET_SCALE * 2, // ok
-                    (c.y as f32) / ASSET_SCALE * 2,
+                    (c.x as f32) / ASSET_SCALE * 2.0,
+                    (c.z as f32) / ASSET_SCALE * 2.0,
+                    (c.y as f32) / ASSET_SCALE * 2.0,
                 );
                 let transform = scale.with_translation(translation).with_rotation(rotation);
 
