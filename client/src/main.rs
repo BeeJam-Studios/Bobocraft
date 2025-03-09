@@ -686,6 +686,8 @@ fn toggle_background(
     });
 }
 
+const ASSET_SCALE: f32 = 5.0;
+
 pub fn spawn_bobo(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -694,7 +696,7 @@ pub fn spawn_bobo(
     mut bobos: Query<&mut Transform, With<BoboName>>,
 ) {
     debug!("spawning bobo named {name}");
-    let scale = Transform::from_scale(Vec3::splat(5.0));
+    let scale = Transform::from_scale(Vec3::splat(ASSET_SCALE));
     let mut entity_commands = commands.spawn_empty();
     let bobo_id = entity_commands.id();
 
@@ -753,9 +755,9 @@ pub fn spawn_bobo(
             for c in p.cube.connections {
                 info!("{:?}", c);
                 let translation = Vec3::new(
-                    (c.x as f32) / 10.0,
-                    (c.z as f32) / 10.0, // ok
-                    (c.y as f32) / 10.0,
+                    (c.x as f32) / ASSET_SCALE * 2,
+                    (c.z as f32) / ASSET_SCALE * 2, // ok
+                    (c.y as f32) / ASSET_SCALE * 2,
                 );
                 let transform = scale.with_translation(translation).with_rotation(rotation);
 
