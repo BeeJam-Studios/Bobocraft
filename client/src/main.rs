@@ -751,14 +751,21 @@ pub fn spawn_bobo(
                 Placement(p),
             ));
 
-            let scale = Transform::from_scale(Vec3::splat(1.0));
+            let scale = Transform::from_scale(Vec3::new(1.0, 1.0, 0.1));
             for c in p.cube.connections {
                 info!("{:?}", c);
                 let translation = Vec3::new(
-                    (c.x as f32) / ASSET_SCALE * 2.0,
-                    (c.z as f32) / ASSET_SCALE * 2.0,
-                    (c.y as f32) / ASSET_SCALE * 2.0,
+                    (c.x as f32) / (ASSET_SCALE * 2.0),
+                    (c.z as f32) / (ASSET_SCALE * 2.0),
+                    (c.y as f32) / (ASSET_SCALE * 2.0),
                 );
+                let rotation = Quat::from_euler(
+                    EulerRot::YZX,
+                    ((if c.x % 2 == 0 { 0 } else { 90 }) as f32).to_radians(),
+                    ((if c.y % 2 == 0 { 0 } else { 0 }) as f32).to_radians(),
+                    ((if c.z % 2 == 0 { 0 } else { 90 }) as f32).to_radians(),
+                );
+
                 let transform = scale.with_translation(translation).with_rotation(rotation);
 
                 entity_commands.with_children(|cube| {
