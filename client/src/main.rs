@@ -1,6 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use anyhow::Context;
+use avian3d::prelude::*;
 use bevy::color::palettes::css;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input::mouse::MouseButtonInput;
@@ -685,6 +686,8 @@ fn toggle_background(
     });
 }
 
+const ASSET_SCALE: f32 = 5.0;
+
 pub fn spawn_bobo(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -693,7 +696,7 @@ pub fn spawn_bobo(
     mut bobos: Query<&mut Transform, With<BoboName>>,
 ) {
     debug!("spawning bobo named {name}");
-    let scale = Transform::from_scale(Vec3::new(5.0, 5.0, 5.0));
+    let scale = Transform::from_scale(Vec3::splat(ASSET_SCALE));
     let mut entity_commands = commands.spawn_empty();
     let bobo_id = entity_commands.id();
 
@@ -708,18 +711,18 @@ pub fn spawn_bobo(
 
     entity_commands.with_children(|parent| {
         for p in placements.iter() {
-            debug!("spawning {} at {:?}", p.cube, p.translation);
             max.x = f32::min(max.x, p.translation.x as f32 * -1.0);
             max.y = f32::min(max.y, p.translation.z as f32);
             max.z = f32::min(max.z, p.translation.y as f32);
         }
 
         for p in placements {
+            debug!("spawning {} at {:?}", p.cube, p.translation);
             let translation = Vec3::new(
                 p.translation.x as f32 * -1.0,
                 p.translation.z as f32,
                 p.translation.y as f32,
-            ) - max / 2.0;
+            );
 
             let rotation = Quat::from_euler(
                 EulerRot::YZX,
@@ -747,13 +750,45 @@ pub fn spawn_bobo(
                 transform,
                 Placement(p),
             ));
+
+            let scale = Transform::from_scale(Vec3::new(1.0, 1.0, 0.1));
+            for c in p.cube.connections {
+                info!("{:?}", c);
+                let translation = Vec3::new(
+                    (c.x as f32) / (ASSET_SCALE * 2.0),
+                    (c.z as f32) / (ASSET_SCALE * 2.0),
+                    (c.y as f32) / (ASSET_SCALE * 2.0),
+                );
+                let rotation = Quat::from_euler(
+                    EulerRot::YZX,
+                    ((if c.x % 2 == 0 { 0 } else { 90 }) as f32).to_radians(),
+                    0.0,
+                    ((if c.z % 2 == 0 { 0 } else { 90 }) as f32).to_radians(),
+                );
+
+                let transform = scale.with_translation(translation).with_rotation(rotation);
+
+                entity_commands.with_children(|cube| {
+                    let mut entity_commands = cube.spawn_empty();
+                    entity_commands.insert((
+                        HookedSceneBundle {
+                            scene: SceneRoot(
+                                asset_server.load(format!("gltf/medium_cube.glb#Scene0")),
+                            ),
+                            hook: SceneHook::new(move |entity, commands| {
+                                if entity.get::<Mesh3d>().is_some() {
+                                    commands.insert(RaycastMesh::<MyRaycastSet>::default());
+                                    //_commands.insert(p.color);
+                                }
+                            }),
+                        },
+                        transform,
+                    ));
+                });
+            }
         }
         info!("bobo named {name} spawned");
     });
-
-    for mut bobo in bobos.iter_mut() {
-        bobo.translation.z -= max.z + 40.0;
-    }
 }
 
 #[derive(Event, Debug, Clone)]
@@ -1187,6 +1222,7 @@ fn main() -> Fallible {
     app.add_plugins((
         plugins,
         EmbeddedAssetPlugin::default(),
+        PhysicsPlugins::default(),
         DeferredRaycastingPlugin::<MyRaycastSet>::default(),
         HookPlugin,
         CameraPlugin,
