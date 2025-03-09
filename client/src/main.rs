@@ -762,7 +762,7 @@ pub fn spawn_bobo(
                 let rotation = Quat::from_euler(
                     EulerRot::YZX,
                     ((if c.x % 2 == 0 { 0 } else { 90 }) as f32).to_radians(),
-                    ((if c.y % 2 == 0 { 0 } else { 0 }) as f32).to_radians(),
+                    0.0,
                     ((if c.z % 2 == 0 { 0 } else { 90 }) as f32).to_radians(),
                 );
 
